@@ -536,6 +536,36 @@ def mainloop(params):
 
 #Test code ends here
     
+    # Prepare data for CSV output, in order to be handled by other software
+    output_data = []
+    max_length = max(len(uv_x), len(uv260_x), len(cond_x), len(frac_x))
+    
+    for i in range(max_length):
+        row = [
+            uv_x[i] if i < len(uv_x) else '',
+            uv_trace[i] if i < len(uv_trace) else '',
+            uv260_x[i] if i < len(uv260_x) else '',
+            uv260_trace[i] if i < len(uv260_trace) else '',
+            cond_x[i] if i < len(cond_x) else '',
+            cond_trace[i] if i < len(cond_trace) else '',
+            frac_x[i] if i < len(frac_x) else '',
+            fracs[i] if i < len(fracs) else ''
+        ]
+        output_data.append(row)
+
+    # Define CSV output file name
+    output_csv_file = aktafile[:-4] + '_output.csv'
+
+    # Write data to CSV
+    with open(output_csv_file, mode='w', newline='', encoding='utf-8') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        # Write header
+        csvwriter.writerow(['UV_280_x', 'UV_280_trace', 'UV_260_x', 'UV_260_trace', 'Conductivity_x', 'Conductivity_trace', 'Fraction_x', 'Fraction_label'])
+        # Write rows
+        csvwriter.writerows(output_data)
+
+    print(f'\nCSV Output: {output_csv_file}')
+
     sys.exit()
     
 if __name__ == "__main__":
