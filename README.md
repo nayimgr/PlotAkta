@@ -1,3 +1,6 @@
+# Edits by Nayim and Juan
+In this custom version, it outputs a CSV with Abs280/260, conductivity and fractions
+
 # Plot Akta Results
 
 Use this script to turn your Akta results file from Unicorn (.csv) into a nicely formatted pdf and png. It will plot the UV-280 trace, but additional data can be overlaid (see below).
