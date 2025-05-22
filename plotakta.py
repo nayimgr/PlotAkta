@@ -16,9 +16,12 @@ def setupParserOptions():
     parser.add_option("-c", "--conductance",
                   action="store_true", dest="conductance", default=False,
                   help="Overlay conductance trace")
-    parser.add_option("-u", "--uv260",
-                  action="store_true", dest="uv260", default=False,
-                  help="Overlay UV-260nm trace.")
+    parser.add_option("--uv2",
+                  action="store_true", dest="uv2", default=False,
+                  help="Overlay a second UV trace.")
+    parser.add_option("--uv3",
+                  action="store_true", dest="uv3", default=False,
+                  help="Overlay a third UV trace.")
     parser.add_option("-b", "--percent_b",
                   action="store_true", dest="percentb", default=False,
                   help="Overlay % B")
@@ -73,7 +76,8 @@ def mainloop(params):
     doCond = params["conductance"]
     doConcB = params["percentb"]
     doLog = params["log"]
-    doUV260 = params["uv260"]
+    doUV2 = params["uv2"]
+    doUV3 = params["uv3"]
 
     #FOR REGULAR AKTA FRACS
     doFracs = params["fracs"]
@@ -185,16 +189,22 @@ def mainloop(params):
     ###########################################################
 
     uv_x = 0
-    uv260_x = 0
+    uv_trace = 0
+    uv2 = 0
+    uv2_trace = 0
+    uv3 = 0
+    uv3_trace = 0
     cond_x = 0
     concb_x = 0
     frac_x = 0
     log_x = 0
     dig1_x = 0
 
+
+
     for n,i in enumerate(aktalst):
         #print(i[1])
-        if i[1] == 'UV 1_280':
+        if i[1].startswith('UV 1_') and len(i[1]) <= 8:
 
             uv_x = i[3:]
             uv_x = floatize(clean(uv_x))
@@ -202,13 +212,30 @@ def mainloop(params):
             uv_trace = aktalst[n+1][3:]
             uv_trace = floatize(clean(uv_trace))
 
-        if i[1] == 'UV 2_260':
+            uv_x_label = i[1][-3:]
 
-            uv260_x = i[3:]
-            uv260_x = floatize(clean(uv260_x))
+        if i[1].startswith('UV 2_') and len(i[1]) <= 8:
 
-            uv260_trace = aktalst[n+1][3:]
-            uv260_trace = floatize(clean(uv260_trace))
+            uv2 = i[3:]
+            uv2 = floatize(clean(uv2))
+
+            uv2_trace = aktalst[n+1][3:]
+            uv2_trace = floatize(clean(uv2_trace))
+
+            uv2_label = i[1][-3:]
+
+
+        if i[1].startswith('UV 3_') and len(i[1]) <= 8:
+
+            uv3 = i[3:]
+            uv3 = floatize(clean(uv3))
+
+            uv3_trace = aktalst[n+1][3:]
+            uv3_trace = floatize(clean(uv3_trace))
+
+            uv3_label = i[1][-3:]
+            print(uv3_label)
+
 
         if i[1] == 'Cond':
 
@@ -251,15 +278,19 @@ def mainloop(params):
             dig1_signal = floatize(clean(dig1_signal))
             
     #######################################################################
-
     if uv_x == 0:
 
-        print('\nERROR: No \'UV 1_280\' (UV trace) column in the CSV file.')
+        print('\nERROR: No \'UV 1_XXX\' (UV trace) column in the CSV file.')
         sys.exit()
         
-    if doUV260 and uv260_x == 0:
+    if doUV2 and uv2 == 0:
 
-        print('\nERROR: No \'UV 2_260\' (UV trace) column in the CSV file.')
+        print('\nERROR: No \'UV 2_XXX\' (UV trace) column in the CSV file.')
+        sys.exit()
+        
+    if doUV3 and uv3 == 0:
+
+        print('\nERROR: No \'UV 3_XXX\' (UV trace) column in the CSV file.')
         sys.exit()
 
     if doCond and cond_x == 0:
@@ -313,7 +344,7 @@ def mainloop(params):
     # MAIN PLOT
 
     plt.xlabel('Volume (mL)', fontsize = 20, fontname="Arial")
-    plt.ylabel('Absorbance 280nm (mAU)', fontsize = 20, fontname="Arial", color = 'darkblue')
+    plt.ylabel('Absorbance '+uv_x_label+'nm (mAU)', fontsize = 20, fontname="Arial", color = 'darkblue')
     plt.xticks(fontsize = 20, fontname="Arial")
     plt.yticks(fontsize = 20, fontname="Arial")
 
@@ -334,11 +365,20 @@ def mainloop(params):
         ymins.append(ax4.get_ylim()[0])
         ymaxs.append(ax4.get_ylim()[1])
 
-    if doUV260:
+    if doUV2:
+
+        ax.plot(uv2, uv2_trace, color = 'purple', linewidth = 2)
+        ax.set_ylabel('Absorbance '+uv2_label+'nm (mAU)',fontsize=20, color = 'purple')
+        ax.yaxis.set_tick_params(labelsize=20)
+            
+        ymins.append(ax.get_ylim()[0])
+        ymaxs.append(ax.get_ylim()[1])
+
+    if doUV3:
 
         ax5=ax.twinx()
-        ax5.plot(uv260_x, uv260_trace, color = 'purple', linewidth = 2)
-        ax5.set_ylabel("Absorbance 260nm (mAU)",fontsize=20, color = 'purple')
+        ax5.plot(uv3, uv3_trace, color = 'black', linewidth = 2)
+        ax5.set_ylabel('Absorbance '+uv3_label+'nm (mAU)',fontsize=20, color = 'black')
         ax5.yaxis.set_tick_params(labelsize=20)
             
         ymins.append(ax5.get_ylim()[0])
@@ -538,14 +578,26 @@ def mainloop(params):
     
     # Prepare data for CSV output, in order to be handled by other software
     output_data = []
-    max_length = max(len(uv_x), len(uv260_x), len(cond_x), len(frac_x))
-    
+    max_length = max(
+        len(uv_x), 
+        len(uv_trace), 
+        len(uv2) if isinstance(uv2, list) else 0, 
+        len(uv2_trace) if isinstance(uv2_trace, list) else 0, 
+        len(uv3) if isinstance(uv3, list) else 0, 
+        len(uv3_trace) if isinstance(uv3_trace, list) else 0, 
+        len(cond_x), 
+        len(cond_trace), 
+        len(frac_x)
+    )
+
     for i in range(max_length):
         row = [
             uv_x[i] if i < len(uv_x) else '',
             uv_trace[i] if i < len(uv_trace) else '',
-            uv260_x[i] if i < len(uv260_x) else '',
-            uv260_trace[i] if i < len(uv260_trace) else '',
+            uv2[i] if isinstance(uv2, list) and i < len(uv2) else '',
+            uv2_trace[i] if isinstance(uv2_trace, list) and i < len(uv2_trace) else '',
+            uv3[i] if isinstance(uv3, list) and i < len(uv3) else '',
+            uv3_trace[i] if isinstance(uv3_trace, list) and i < len(uv3_trace) else '',
             cond_x[i] if i < len(cond_x) else '',
             cond_trace[i] if i < len(cond_trace) else '',
             frac_x[i] if i < len(frac_x) else '',
@@ -560,7 +612,13 @@ def mainloop(params):
     with open(output_csv_file, mode='w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
         # Write header
-        csvwriter.writerow(['UV_280_x', 'UV_280_trace', 'UV_260_x', 'UV_260_trace', 'Conductivity_x', 'Conductivity_trace', 'Fraction_x', 'Fraction_label'])
+        csvwriter.writerow([
+            'UV_280_x', 'UV_280_trace', 
+            'UV_2_x', 'UV_2_trace', 
+            'UV_3_x', 'UV_3_trace', 
+            'Conductivity_x', 'Conductivity_trace', 
+            'Fraction_x', 'Fraction_label'
+        ])
         # Write rows
         csvwriter.writerows(output_data)
 
